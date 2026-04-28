@@ -158,12 +158,50 @@ async def async_main() -> None:
     bench_p.add_argument("--provider", choices=["ollama", "openai"], default="ollama")
     bench_p.add_argument("--results", type=str, default="results.jsonl", help="Results file")
 
+    perf_p = sub.add_parser(
+        "bench-perf",
+        help="Throughput perf benchmark via llama-benchy (OpenAI-compatible endpoint)",
+    )
+    perf_p.add_argument("--url", required=True, help="OpenAI-compatible base URL")
+    perf_p.add_argument("--models", nargs="+", required=True)
+    perf_p.add_argument("--api-key", default=None)
+    perf_p.add_argument("--pp", nargs="+", type=int, default=None, help="Prompt-processing tokens")
+    perf_p.add_argument("--tg", nargs="+", type=int, default=None, help="Generation token counts")
+    perf_p.add_argument("--depth", nargs="+", type=int, default=None, help="Context depths")
+    perf_p.add_argument("--concurrency", nargs="+", type=int, default=None)
+    perf_p.add_argument("--runs", type=int, default=None)
+    perf_p.add_argument("--prefix-caching", action="store_true")
+    perf_p.add_argument("--no-cache", action="store_true")
+    perf_p.add_argument("--skip-coherence", action="store_true")
+    perf_p.add_argument("--no-warmup", action="store_true")
+    perf_p.add_argument(
+        "--benchy-cmd",
+        default=None,
+        help="Override how llama-benchy is invoked (e.g. 'llama-benchy' if installed). "
+             "Default: 'uvx llama-benchy'",
+    )
+    perf_p.add_argument("--results", type=str, default="results.jsonl")
+    perf_p.add_argument("--benchmark-name", default="throughput_benchy",
+                        help="Label written to BenchResult.benchmark")
+    perf_p.add_argument(
+        "--benchy-arg",
+        action="append",
+        default=[],
+        help="Pass-through arg to llama-benchy (repeatable). Example: --benchy-arg --book-url=...",
+    )
+
     args = parser.parse_args()
 
-    if args.command != "bench":
-        parser.print_help()
+    if args.command == "bench":
+        await _run_bench_command(args)
         return
+    if args.command == "bench-perf":
+        _run_bench_perf_command(args)
+        return
+    parser.print_help()
 
+
+async def _run_bench_command(args: argparse.Namespace) -> None:
     if args.provider == "ollama":
         from llm_toolkit.providers.ollama import OllamaProvider
         provider = OllamaProvider(base_url=args.url)
@@ -182,6 +220,44 @@ async def async_main() -> None:
         result = await run_suite(provider, model, suite)
         print_suite_result(result)
         for br in suite_results_to_bench_results(result):
+            store.append(br)
+
+    print(f"\nResults saved to {args.results}")
+
+
+def _run_bench_perf_command(args: argparse.Namespace) -> None:
+    from llm_toolkit.bench.throughput_benchy import (
+        BenchyConfig,
+        print_report_summary,
+        report_to_bench_results,
+        run_benchy,
+    )
+
+    command = args.benchy_cmd.split() if args.benchy_cmd else None
+    store = ResultStore(Path(args.results))
+
+    for model in args.models:
+        cfg = BenchyConfig(
+            base_url=args.url,
+            model=model,
+            api_key=args.api_key,
+            pp=args.pp,
+            tg=args.tg,
+            depth=args.depth,
+            concurrency=args.concurrency,
+            runs=args.runs,
+            enable_prefix_caching=args.prefix_caching,
+            no_cache=args.no_cache,
+            skip_coherence=args.skip_coherence,
+            no_warmup=args.no_warmup,
+            extra_args=args.benchy_arg or None,
+            command=command,
+        )
+        report = run_benchy(cfg)
+        print_report_summary(report)
+        for br in report_to_bench_results(
+            report, benchmark=args.benchmark_name, model_override=model
+        ):
             store.append(br)
 
     print(f"\nResults saved to {args.results}")
