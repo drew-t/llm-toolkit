@@ -165,6 +165,14 @@ async def async_main() -> None:
     perf_p.add_argument("--url", required=True, help="OpenAI-compatible base URL")
     perf_p.add_argument("--models", nargs="+", required=True)
     perf_p.add_argument("--api-key", default=None)
+    perf_p.add_argument(
+        "--tokenizer",
+        default=None,
+        help="HF tokenizer repo or local path (e.g. Qwen/Qwen3-8B). "
+             "Defaults to model name, which often fails for Ollama-style tags.",
+    )
+    perf_p.add_argument("--served-model-name", default=None,
+                        help="Model name used in API calls (defaults to --models value)")
     perf_p.add_argument("--pp", nargs="+", type=int, default=None, help="Prompt-processing tokens")
     perf_p.add_argument("--tg", nargs="+", type=int, default=None, help="Generation token counts")
     perf_p.add_argument("--depth", nargs="+", type=int, default=None, help="Context depths")
@@ -241,6 +249,8 @@ def _run_bench_perf_command(args: argparse.Namespace) -> None:
             base_url=args.url,
             model=model,
             api_key=args.api_key,
+            tokenizer=args.tokenizer,
+            served_model_name=args.served_model_name,
             pp=args.pp,
             tg=args.tg,
             depth=args.depth,
