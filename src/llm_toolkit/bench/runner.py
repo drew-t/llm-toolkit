@@ -209,6 +209,12 @@ async def async_main() -> None:
     migrate_p.add_argument("--runner", default=None, help="Backfill runner column")
     migrate_p.add_argument("--gpu", default=None, help="Backfill gpu column")
 
+    ui_p = sub.add_parser("ui", help="Start the web dashboard")
+    ui_p.add_argument("--host", default="127.0.0.1")
+    ui_p.add_argument("--port", type=int, default=7860)
+    ui_p.add_argument("--db", type=str, default=None)
+    ui_p.add_argument("--hosts-config", type=str, default=None)
+
     args = parser.parse_args()
 
     if args.command == "bench":
@@ -219,6 +225,9 @@ async def async_main() -> None:
         return
     if args.command == "db":
         _run_db_command(args)
+        return
+    if args.command == "ui":
+        _run_ui_command(args)
         return
     parser.print_help()
 
@@ -311,6 +320,19 @@ def _run_db_command(args: argparse.Namespace) -> None:
             sink.append(r)
             total += 1
     print(f"Imported {total} rows into {db_path}")
+
+
+def _run_ui_command(args: argparse.Namespace) -> None:
+    import uvicorn
+    from llm_toolkit.db import DEFAULT_DB_PATH
+    from llm_toolkit.discovery.hosts import DEFAULT_HOSTS_PATH
+    from llm_toolkit.web.app import create_app
+
+    app = create_app(
+        db_path=Path(args.db) if args.db else DEFAULT_DB_PATH,
+        hosts_path=Path(args.hosts_config) if args.hosts_config else DEFAULT_HOSTS_PATH,
+    )
+    uvicorn.run(app, host=args.host, port=args.port, log_level="info")
 
 
 def main() -> None:
