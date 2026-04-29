@@ -10,7 +10,16 @@ import { api } from '../api'
 
 export function ResultsPage() {
   const [selected, setSelected] = useState<Set<number>>(new Set())
-  const [query, setQuery] = useState<ResultsQuery>({})
+  const [query, setQuery] = useState<ResultsQuery>(() => {
+    const usp = new URLSearchParams(window.location.search)
+    const out: ResultsQuery = {}
+    const model = usp.get('model'); if (model) out.model = model
+    const host = usp.get('host'); if (host) out.host = host
+    const runner = usp.get('runner'); if (runner) out.runner = runner
+    const gpu = usp.get('gpu'); if (gpu) out.gpu = gpu
+    const benchmark = usp.get('benchmark'); if (benchmark) out.benchmark = benchmark
+    return out
+  })
   const [compare, setCompare] = useState<CompareResponse | null>(null)
   const [compareError, setCompareError] = useState<string | null>(null)
   const { data, error, loading } = useResults(query)
