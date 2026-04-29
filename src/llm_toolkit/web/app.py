@@ -23,6 +23,9 @@ def create_app(
     app = FastAPI(title="llm-toolkit")
     app.state.ctx = make_context(db_path=db, hosts_path=hosts)
 
+    from llm_toolkit.web.routes import hosts as hosts_routes
+    app.include_router(hosts_routes.router)
+
     @app.get("/healthz")
     def healthz() -> dict:
         return {"ok": True}
