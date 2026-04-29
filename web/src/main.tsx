@@ -1,2 +1,7 @@
-// placeholder — replaced in Task 3
-export {}
+import { render } from 'preact'
+import './index.css'
+import { App } from './app'
+
+const root = document.getElementById('app')
+if (!root) throw new Error('#app element missing from index.html')
+render(<App />, root)
