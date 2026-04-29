@@ -18,7 +18,9 @@ interface Props {
 }
 
 export function ResultsTable({ rows, selected, onToggle }: Props) {
-  const [sorting, setSorting] = useState<SortingState>([])
+  const [sorting, setSorting] = useState<SortingState>([
+    { id: 'timestamp', desc: true },
+  ])
 
   const columns: ColumnDef<ResultRow>[] = [
     {
