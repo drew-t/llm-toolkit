@@ -50,14 +50,17 @@ def list_results(
     for col, val in [("benchmark", benchmark), ("model", model),
                      ("host", host), ("runner", runner), ("gpu", gpu)]:
         if val is not None:
-            clauses.append(f"{col} = ?"); args.append(val)
+            clauses.append(f"{col} = ?")
+            args.append(val)
     if since is not None:
-        clauses.append("timestamp >= ?"); args.append(since)
+        clauses.append("timestamp >= ?")
+        args.append(since)
     sql = "SELECT * FROM results"
     if clauses:
         sql += " WHERE " + " AND ".join(clauses)
     sql += f" ORDER BY {sort} {order.upper()}"
-    sql += " LIMIT ? OFFSET ?"; args += [limit, offset]
+    sql += " LIMIT ? OFFSET ?"
+    args += [limit, offset]
 
     with sqlite3.connect(request.app.state.ctx.db_path) as conn:
         conn.row_factory = sqlite3.Row

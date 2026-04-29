@@ -227,7 +227,7 @@ async def async_main() -> None:
         _run_db_command(args)
         return
     if args.command == "ui":
-        _run_ui_command(args)
+        await _run_ui_command(args)
         return
     parser.print_help()
 
@@ -322,8 +322,9 @@ def _run_db_command(args: argparse.Namespace) -> None:
     print(f"Imported {total} rows into {db_path}")
 
 
-def _run_ui_command(args: argparse.Namespace) -> None:
+async def _run_ui_command(args: argparse.Namespace) -> None:
     import uvicorn
+
     from llm_toolkit.db import DEFAULT_DB_PATH
     from llm_toolkit.discovery.hosts import DEFAULT_HOSTS_PATH
     from llm_toolkit.web.app import create_app
@@ -332,7 +333,8 @@ def _run_ui_command(args: argparse.Namespace) -> None:
         db_path=Path(args.db) if args.db else DEFAULT_DB_PATH,
         hosts_path=Path(args.hosts_config) if args.hosts_config else DEFAULT_HOSTS_PATH,
     )
-    uvicorn.run(app, host=args.host, port=args.port, log_level="info")
+    config = uvicorn.Config(app, host=args.host, port=args.port, log_level="info")
+    await uvicorn.Server(config).serve()
 
 
 def main() -> None:

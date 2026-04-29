@@ -137,24 +137,26 @@ class SqliteResultStore:
     ) -> list[BenchResult]:
         clauses: list[str] = []
         args: list[Any] = []
-        if benchmark is not None:
-            clauses.append("benchmark = ?"); args.append(benchmark)
-        if model is not None:
-            clauses.append("model = ?"); args.append(model)
-        if host is not None:
-            clauses.append("host = ?"); args.append(host)
-        if runner is not None:
-            clauses.append("runner = ?"); args.append(runner)
-        if gpu is not None:
-            clauses.append("gpu = ?"); args.append(gpu)
+        for col, val in [
+            ("benchmark", benchmark),
+            ("model", model),
+            ("host", host),
+            ("runner", runner),
+            ("gpu", gpu),
+        ]:
+            if val is not None:
+                clauses.append(f"{col} = ?")
+                args.append(val)
         if since is not None:
-            clauses.append("timestamp >= ?"); args.append(since)
+            clauses.append("timestamp >= ?")
+            args.append(since)
         sql = "SELECT benchmark, model, timestamp, metrics, metadata FROM results"
         if clauses:
             sql += " WHERE " + " AND ".join(clauses)
         sql += " ORDER BY timestamp DESC"
         if limit is not None:
-            sql += " LIMIT ?"; args.append(limit)
+            sql += " LIMIT ?"
+            args.append(limit)
         with sqlite3.connect(self.path) as conn:
             rows = list(conn.execute(sql, args))
         return [

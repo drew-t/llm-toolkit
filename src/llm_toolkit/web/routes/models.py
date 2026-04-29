@@ -26,7 +26,7 @@ async def list_models(request: Request) -> dict:
                 ctx.cache.get(host.name, entry.type, entry.url, entry.gpu, adapter.probe)
             )
         snaps = await asyncio.gather(*coros, return_exceptions=False)
-        for entry, snap in zip(entries, snaps):
+        for entry, snap in zip(entries, snaps, strict=True):
             loaded_tags = {m.tag for m in snap.loaded_models}
             for m in snap.installed_models:
                 rows.append({

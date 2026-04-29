@@ -20,14 +20,17 @@ async def test_ollama_happy_path():
         if request.url.path == "/api/tags":
             return httpx.Response(200, json={
                 "models": [
-                    {"name": "qwen3:8b", "size": 5_000_000_000, "modified_at": "2026-04-01T00:00:00Z"},
-                    {"name": "llama3:8b", "size": 4_000_000_000, "modified_at": "2026-03-15T00:00:00Z"},
+                    {"name": "qwen3:8b", "size": 5_000_000_000,
+                     "modified_at": "2026-04-01T00:00:00Z"},
+                    {"name": "llama3:8b", "size": 4_000_000_000,
+                     "modified_at": "2026-03-15T00:00:00Z"},
                 ]
             })
         if request.url.path == "/api/ps":
             return httpx.Response(200, json={
                 "models": [
-                    {"name": "qwen3:8b", "size_vram": 8_000_000_000, "expires_at": "2026-04-28T16:00:00Z"},
+                    {"name": "qwen3:8b", "size_vram": 8_000_000_000,
+                     "expires_at": "2026-04-28T16:00:00Z"},
                 ]
             })
         return httpx.Response(404)

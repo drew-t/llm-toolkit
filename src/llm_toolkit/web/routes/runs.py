@@ -30,8 +30,10 @@ def list_runs(
     sql = "SELECT * FROM runs"
     args: list[Any] = []
     if status is not None:
-        sql += " WHERE status = ?"; args.append(status)
-    sql += " ORDER BY id DESC LIMIT ? OFFSET ?"; args += [limit, offset]
+        sql += " WHERE status = ?"
+        args.append(status)
+    sql += " ORDER BY id DESC LIMIT ? OFFSET ?"
+    args += [limit, offset]
     with sqlite3.connect(request.app.state.ctx.db_path) as conn:
         conn.row_factory = sqlite3.Row
         rows = [_row_to_dict(r) for r in conn.execute(sql, args)]

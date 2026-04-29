@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import os
 import tomllib
+from collections.abc import Iterator
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Iterator
 
 KNOWN_RUNNERS = {"ollama", "vllm", "llama-server"}
 
