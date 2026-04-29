@@ -26,6 +26,9 @@ def create_app(
     from llm_toolkit.web.routes import hosts as hosts_routes
     app.include_router(hosts_routes.router)
 
+    from llm_toolkit.web.routes import results as results_routes
+    app.include_router(results_routes.router)
+
     @app.get("/healthz")
     def healthz() -> dict:
         return {"ok": True}
