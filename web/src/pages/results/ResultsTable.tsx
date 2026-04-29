@@ -6,6 +6,7 @@ import {
   type ColumnDef,
   type SortingState,
 } from '@tanstack/react-table'
+import { Fragment } from 'preact'
 import { useState } from 'preact/hooks'
 import type { ResultRow } from '../../types'
 import { formatNumber, formatRelativeTime } from '../../utils/format'
@@ -21,6 +22,16 @@ export function ResultsTable({ rows, selected, onToggle }: Props) {
   const [sorting, setSorting] = useState<SortingState>([
     { id: 'timestamp', desc: true },
   ])
+  const [expanded, setExpanded] = useState<Set<number>>(new Set())
+
+  function toggleExpanded(id: number) {
+    setExpanded((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
 
   const columns: ColumnDef<ResultRow>[] = [
     {
@@ -42,6 +53,7 @@ export function ResultsTable({ rows, selected, onToggle }: Props) {
             }
             table.resetRowSelection()
           }}
+          onClick={(e) => e.stopPropagation()}
         />
       ),
       cell: ({ row }) => (
@@ -49,6 +61,7 @@ export function ResultsTable({ rows, selected, onToggle }: Props) {
           type="checkbox"
           checked={selected.has(row.original.id)}
           onChange={() => onToggle(row.original.id)}
+          onClick={(e) => e.stopPropagation()}
         />
       ),
     },
@@ -134,20 +147,60 @@ export function ResultsTable({ rows, selected, onToggle }: Props) {
         ))}
       </thead>
       <tbody>
-        {table.getRowModel().rows.map((row) => (
-          <tr
-            key={row.id}
-            class={`border-t border-border ${
-              selected.has(row.original.id) ? 'bg-surface' : 'hover:bg-surface'
-            }`}
-          >
-            {row.getVisibleCells().map((cell) => (
-              <td key={cell.id} class="px-3 py-2">
-                {flexRender(cell.column.columnDef.cell, cell.getContext())}
-              </td>
-            ))}
-          </tr>
-        ))}
+        {table.getRowModel().rows.map((row) => {
+          const r = row.original
+          const isOpen = expanded.has(r.id)
+          return (
+            <Fragment key={row.id}>
+              <tr
+                class={`cursor-pointer border-t border-border ${
+                  selected.has(r.id) ? 'bg-surface' : 'hover:bg-surface'
+                }`}
+                onClick={() => toggleExpanded(r.id)}
+              >
+                {row.getVisibleCells().map((cell) => (
+                  <td key={cell.id} class="px-3 py-2">
+                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                  </td>
+                ))}
+              </tr>
+              {isOpen && (
+                <tr class="border-t border-border bg-bg">
+                  <td colspan={columns.length} class="px-6 py-3">
+                    <div class="flex flex-col gap-2 text-xs">
+                      {r.run_id !== null && (
+                        <div>
+                          <span class="text-text-muted">Run: </span>
+                          <a
+                            href={`#run-${r.run_id}`}
+                            class="text-accent hover:underline"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            Run #{r.run_id}
+                          </a>
+                        </div>
+                      )}
+                      <div>
+                        <div class="text-text-muted">metrics</div>
+                        <pre class="mt-1 overflow-x-auto rounded border border-border bg-panel p-2 font-mono text-xs">
+                          {JSON.stringify(r.metrics, null, 2)}
+                        </pre>
+                      </div>
+                      {Object.keys(r.metadata ?? {}).length > 0 && (
+                        <div>
+                          <div class="text-text-muted">metadata</div>
+                          <pre class="mt-1 overflow-x-auto rounded border border-border bg-panel p-2 font-mono text-xs">
+                            {JSON.stringify(r.metadata, null, 2)}
+                          </pre>
+                        </div>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              )}
+            </Fragment>
+          )
+        })}
       </tbody>
     </table>
   )

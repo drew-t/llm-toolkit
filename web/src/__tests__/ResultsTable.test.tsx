@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/preact'
+import { fireEvent, render, screen } from '@testing-library/preact'
 import { describe, expect, it } from 'vitest'
 import { ResultsTable } from '../pages/results/ResultsTable'
 import type { ResultRow } from '../types'
@@ -50,5 +50,21 @@ describe('ResultsTable', () => {
     // row id=2 (newer) renders first → checkboxes[1] = id=2, checkboxes[2] = id=1.
     expect(checkboxes[1].checked).toBe(false)  // id=2 not selected
     expect(checkboxes[2].checked).toBe(true)   // id=1 selected
+  })
+
+  it('expands a row inline when clicked, showing raw metrics', () => {
+    render(<ResultsTable rows={ROWS} selected={new Set()} onToggle={() => {}} />)
+    const dataCells = screen.getAllByText('throughput_benchy')
+    // Default sort is timestamp DESC; id=2 (newer) is index 0, id=1 (older, 42.5) is index 1.
+    fireEvent.click(dataCells[1])
+    // Raw metrics JSON contains the tg_throughput key/value pair.
+    expect(screen.getByText(/"tg_throughput": 42\.5/)).toBeTruthy()
+  })
+
+  it('renders a run link when run_id is set', () => {
+    const withRun = [{ ...ROWS[0], run_id: 9 }]
+    render(<ResultsTable rows={withRun} selected={new Set()} onToggle={() => {}} />)
+    fireEvent.click(screen.getAllByText('throughput_benchy')[0])
+    expect(screen.getByText('Run #9')).toBeTruthy()
   })
 })
