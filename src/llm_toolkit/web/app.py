@@ -5,10 +5,18 @@ from __future__ import annotations
 from pathlib import Path
 
 from fastapi import FastAPI
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
+import llm_toolkit
 from llm_toolkit.db import DEFAULT_DB_PATH, init_db
 from llm_toolkit.discovery.hosts import DEFAULT_HOSTS_PATH
 from llm_toolkit.web.deps import make_context
+
+
+def _resolve_web_dist() -> Path:
+    """Locate web/dist/ relative to the installed package (repo root in dev)."""
+    return Path(llm_toolkit.__file__).resolve().parent.parent.parent / "web" / "dist"
 
 
 def create_app(
@@ -38,5 +46,16 @@ def create_app(
     @app.get("/healthz")
     def healthz() -> dict:
         return {"ok": True}
+
+    dist = _resolve_web_dist()
+    index_html = dist / "index.html"
+    if index_html.exists():
+        assets_dir = dist / "assets"
+        if assets_dir.is_dir():
+            app.mount("/assets", StaticFiles(directory=assets_dir), name="assets")
+
+        @app.get("/{full_path:path}", include_in_schema=False)
+        def spa_fallback(full_path: str) -> FileResponse:
+            return FileResponse(index_html)
 
     return app
