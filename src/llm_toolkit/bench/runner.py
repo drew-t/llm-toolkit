@@ -198,6 +198,17 @@ async def async_main() -> None:
         help="Pass-through arg to llama-benchy (repeatable). Example: --benchy-arg --book-url=...",
     )
 
+    db_p = sub.add_parser("db", help="Database utilities")
+    db_sub = db_p.add_subparsers(dest="db_command")
+    migrate_p = db_sub.add_parser("migrate", help="Import JSONL result files into SQLite")
+    migrate_p.add_argument("paths", nargs="+", help="JSONL file(s) to import")
+    migrate_p.add_argument("--db", type=str, default=None,
+                           help="Target SQLite path (defaults to LLM_TOOLKIT_DB or "
+                                "~/.local/share/llm-toolkit/results.db)")
+    migrate_p.add_argument("--host", default=None, help="Backfill host column")
+    migrate_p.add_argument("--runner", default=None, help="Backfill runner column")
+    migrate_p.add_argument("--gpu", default=None, help="Backfill gpu column")
+
     args = parser.parse_args()
 
     if args.command == "bench":
@@ -205,6 +216,9 @@ async def async_main() -> None:
         return
     if args.command == "bench-perf":
         _run_bench_perf_command(args)
+        return
+    if args.command == "db":
+        _run_db_command(args)
         return
     parser.print_help()
 
@@ -271,6 +285,32 @@ def _run_bench_perf_command(args: argparse.Namespace) -> None:
             store.append(br)
 
     print(f"\nResults saved to {args.results}")
+
+
+def _run_db_command(args: argparse.Namespace) -> None:
+    if args.db_command != "migrate":
+        print("Usage: llm-toolkit db migrate <paths...> [--db PATH] "
+              "[--host H] [--runner R] [--gpu G]")
+        return
+    from llm_toolkit.db import DEFAULT_DB_PATH
+    from llm_toolkit.results import JsonlResultStore, SqliteResultStore
+
+    db_path = Path(args.db) if args.db else DEFAULT_DB_PATH
+    sink = SqliteResultStore(db_path)
+    total = 0
+    for src in args.paths:
+        for r in JsonlResultStore(Path(src)).query():
+            meta = dict(r.metadata or {})
+            if args.host is not None:
+                meta["host"] = args.host
+            if args.runner is not None:
+                meta["runner"] = args.runner
+            if args.gpu is not None:
+                meta["gpu"] = args.gpu
+            r.metadata = meta
+            sink.append(r)
+            total += 1
+    print(f"Imported {total} rows into {db_path}")
 
 
 def main() -> None:
