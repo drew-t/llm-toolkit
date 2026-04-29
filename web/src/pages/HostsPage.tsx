@@ -3,6 +3,7 @@ import { Spinner } from '../components/Spinner'
 import { ErrorBanner } from '../components/ErrorBanner'
 import { formatBytes } from '../utils/format'
 import type { HostSnapshot, RunnerSnapshot } from '../types'
+import { api } from '../api'
 
 export function HostsPage() {
   const { data, error, loading, refresh } = useHosts()
@@ -14,7 +15,9 @@ export function HostsPage() {
         <button
           class="rounded border border-border bg-surface px-3 py-1 text-sm hover:bg-raised"
           onClick={() => {
-            void fetch('/api/hosts/refresh', { method: 'POST' }).then(() => refresh())
+            void api.refreshHosts()
+              .then(() => refresh())
+              .catch((err) => console.error('Refresh failed:', err))
           }}
         >
           Refresh
