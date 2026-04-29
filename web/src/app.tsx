@@ -1,8 +1,22 @@
+import { Route, Switch } from 'wouter-preact'
+import { AppShell } from './components/AppShell'
+import { HostsPage } from './pages/HostsPage'
+import { ModelsPage } from './pages/ModelsPage'
+import { ResultsPage } from './pages/ResultsPage'
+import { RunPage } from './pages/RunPage'
+
 export function App() {
   return (
-    <main class="m-auto p-8 text-center">
-      <h1 class="text-2xl font-semibold">llm-toolkit</h1>
-      <p class="text-text-muted mt-2">Bootstrapping…</p>
-    </main>
+    <AppShell>
+      <Switch>
+        <Route path="/" component={ResultsPage} />
+        <Route path="/hosts" component={HostsPage} />
+        <Route path="/run" component={RunPage} />
+        <Route path="/models" component={ModelsPage} />
+        <Route>
+          <div class="p-6 text-text-muted">Page not found.</div>
+        </Route>
+      </Switch>
+    </AppShell>
   )
 }
