@@ -51,3 +51,21 @@ Python package for local LLM benchmarking, optimization, and training.
 - Ruff for linting
 - All provider-specific logic behind the Provider protocol
 - Suites are functions or classes that produce `Suite` objects
+
+## Web UI (Phase 2)
+
+```bash
+# One-time install
+cd web && npm install
+
+# Dev (two terminals)
+uv run llm-toolkit ui --port 7860     # API server
+cd web && npm run dev                 # Vite dev server on :5173 with /api + /ws proxy
+
+# Production-ish: build the SPA, then ui serves it from /
+cd web && npm run build
+uv run llm-toolkit ui --port 7860     # now also serves the SPA at http://127.0.0.1:7860/
+
+# Tests
+cd web && npm test
+```
