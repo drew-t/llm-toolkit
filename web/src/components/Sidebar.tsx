@@ -21,7 +21,7 @@ export function Sidebar() {
       </div>
       <nav class="flex flex-col">
         {NAV.map((item) => {
-          const active = location === item.href || (item.href !== '/' && location.startsWith(item.href))
+          const active = location === item.href || (item.href !== '/' && location.startsWith(item.href + '/'))
           return (
             <Link
               key={item.href}
