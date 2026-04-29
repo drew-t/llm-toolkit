@@ -22,6 +22,7 @@ export function ResultsPage() {
   })
   const [compare, setCompare] = useState<CompareResponse | null>(null)
   const [compareError, setCompareError] = useState<string | null>(null)
+  const [comparing, setComparing] = useState(false)
   const { data, error, loading } = useResults(query)
 
   const facets = useMemo(() => {
@@ -37,11 +38,12 @@ export function ResultsPage() {
     }
   }, [data])
 
-  // Drop selections that disappear after a filter change.
+  // Drop selections + close any open Compare drawer when the result set changes.
   useEffect(() => {
     if (!data) return
     const visible = new Set(data.results.map((r) => r.id))
     setSelected((prev) => new Set([...prev].filter((id) => visible.has(id))))
+    setCompare(null)
   }, [data])
 
   function toggle(id: number) {
@@ -55,12 +57,15 @@ export function ResultsPage() {
 
   async function openCompare() {
     setCompareError(null)
+    setComparing(true)
     try {
       const ids = [...selected]
       const resp = await api.compare(ids)
       setCompare(resp)
     } catch (e) {
       setCompareError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setComparing(false)
     }
   }
 
@@ -78,10 +83,11 @@ export function ResultsPage() {
         <div class="sticky bottom-0 mt-3 flex items-center justify-between rounded border border-border bg-panel px-4 py-2 text-sm shadow">
           <span>{selected.size} selected</span>
           <button
-            class="rounded bg-accent px-3 py-1 text-bg hover:opacity-90"
+            class="rounded bg-accent px-3 py-1 text-bg hover:opacity-90 disabled:opacity-60"
+            disabled={comparing}
             onClick={() => void openCompare()}
           >
-            Compare
+            {comparing ? 'Comparing…' : 'Compare'}
           </button>
         </div>
       )}

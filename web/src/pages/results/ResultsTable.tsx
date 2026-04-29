@@ -36,7 +36,7 @@ export function ResultsTable({ rows, selected, onToggle }: Props) {
   const columns: ColumnDef<ResultRow>[] = [
     {
       id: 'select',
-      header: ({ table }) => (
+      header: () => (
         <input
           type="checkbox"
           checked={
@@ -51,7 +51,6 @@ export function ResultsTable({ rows, selected, onToggle }: Props) {
                 if (!selected.has(r.id)) onToggle(r.id)
               }
             }
-            table.resetRowSelection()
           }}
           onClick={(e) => e.stopPropagation()}
         />
@@ -171,13 +170,7 @@ export function ResultsTable({ rows, selected, onToggle }: Props) {
                       {r.run_id !== null && (
                         <div>
                           <span class="text-text-muted">Run: </span>
-                          <a
-                            href={`#run-${r.run_id}`}
-                            class="text-accent hover:underline"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            Run #{r.run_id}
-                          </a>
+                          <span class="font-mono text-text">Run #{r.run_id}</span>
                         </div>
                       )}
                       <div>

@@ -1,7 +1,7 @@
 import { useHosts } from '../hooks/useHosts'
 import { Spinner } from '../components/Spinner'
 import { ErrorBanner } from '../components/ErrorBanner'
-import { formatBytes } from '../utils/format'
+import { formatBytes, formatRelativeTime } from '../utils/format'
 import type { HostSnapshot, RunnerSnapshot } from '../types'
 import { api } from '../api'
 
@@ -75,10 +75,12 @@ function RunnerBlock({ snap }: { snap: RunnerSnapshot }) {
       )}
       {snap.reachable && (
         <>
-          <ModelGroup label="Loaded" rows={snap.loaded_models.map((m) => ({
-            tag: m.tag,
-            extra: m.vram_bytes ? formatBytes(m.vram_bytes) : '',
-          }))} />
+          <ModelGroup label="Loaded" rows={snap.loaded_models.map((m) => {
+            const parts: string[] = []
+            if (m.vram_bytes) parts.push(formatBytes(m.vram_bytes))
+            if (m.expires_at) parts.push(`expires ${formatRelativeTime(m.expires_at)}`)
+            return { tag: m.tag, extra: parts.join(' · ') }
+          })} />
           <ModelGroup label="Installed" rows={snap.installed_models.map((m) => ({
             tag: m.tag,
             extra: formatBytes(m.size_bytes),
