@@ -105,3 +105,26 @@ export interface ResultsQuery {
   limit?: number
   offset?: number
 }
+
+export interface CreateRunRequest {
+  benchmark: string
+  model: string
+  host: string
+  runner: string
+  gpu: string | null
+  base_url: string
+  args: Record<string, unknown>
+}
+
+export interface CreateRunResponse {
+  id: number
+  status: 'pending'
+}
+
+export type RunEvent =
+  | { type: 'log'; line: string }
+  | { type: 'status'; status: string }
+  | { type: 'result'; result_id: number; benchmark: string; model: string;
+      metrics: Record<string, number | string | null> }
+  | { type: 'finished'; status: string; exit_code: number | null;
+      results_imported: number }
