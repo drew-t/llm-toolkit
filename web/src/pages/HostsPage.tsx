@@ -1,9 +1,10 @@
+import { Link } from 'wouter-preact'
 import { useHosts } from '../hooks/useHosts'
 import { Spinner } from '../components/Spinner'
 import { ErrorBanner } from '../components/ErrorBanner'
 import { formatBytes, formatRelativeTime } from '../utils/format'
 import type { HostSnapshot, RunnerSnapshot } from '../types'
-import { api } from '../api'
+import { api, runHref } from '../api'
 
 export function HostsPage() {
   const { data, error, loading, refresh } = useHosts()
@@ -42,14 +43,14 @@ function HostCard({ host }: { host: HostSnapshot }) {
       <h2 class="mb-3 text-sm font-semibold">{host.name}</h2>
       <div class="flex flex-col gap-3">
         {host.runners.map((r) => (
-          <RunnerBlock key={r.base_url} snap={r} />
+          <RunnerBlock key={r.base_url} snap={r} hostName={host.name} />
         ))}
       </div>
     </section>
   )
 }
 
-function RunnerBlock({ snap }: { snap: RunnerSnapshot }) {
+function RunnerBlock({ snap, hostName }: { snap: RunnerSnapshot; hostName: string }) {
   return (
     <div class="rounded border border-border bg-surface p-3">
       <div class="flex items-center justify-between">
@@ -85,6 +86,12 @@ function RunnerBlock({ snap }: { snap: RunnerSnapshot }) {
             tag: m.tag,
             extra: formatBytes(m.size_bytes),
           }))} collapsed />
+          <div class="mt-3">
+            <Link href={runHref(hostName, snap.runner, snap.gpu ?? null)}
+                  class="text-sm text-blue-600 hover:underline">
+              Run benchmark →
+            </Link>
+          </div>
         </>
       )}
     </div>

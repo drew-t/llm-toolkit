@@ -1,6 +1,7 @@
 import { Link, useLocation } from 'wouter-preact'
 import clsx from 'clsx'
 import { useHosts } from '../hooks/useHosts'
+import { runHref } from '../api'
 import { RunnerStatusDot } from './RunnerStatusDot'
 
 const NAV = [
@@ -49,6 +50,12 @@ export function Sidebar() {
                 <RunnerStatusDot snap={r} />
                 <span>{r.runner}</span>
                 {r.gpu && <span class="text-text-ghost">· {r.gpu}</span>}
+                {r.reachable && (
+                  <Link href={runHref(h.name, r.runner, r.gpu ?? null)}
+                        class="ml-auto text-xs text-blue-600 hover:underline">
+                    Run
+                  </Link>
+                )}
               </div>
             ))}
           </div>
