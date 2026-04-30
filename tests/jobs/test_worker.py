@@ -95,6 +95,7 @@ async def test_worker_imports_results_with_run_id(tmp_path: Path):
     results_path = tmp_path / "subdir" / "out.jsonl"
     rid = _seed_run(db, results_path=results_path)
     bc = Broadcaster()
+    sub = bc.subscribe()
     rows = [
         {
             "benchmark": "throughput_benchy",
@@ -129,6 +130,18 @@ async def test_worker_imports_results_with_run_id(tmp_path: Path):
     assert results[0]["runner"] == "ollama"
     assert results[0]["gpu"] == "3080ti"
     assert json.loads(results[0]["metrics"])["tg_throughput"] == 73.4
+
+    # The 'result' event must carry the actual inserted row id (not 0).
+    result_events = []
+    while not sub.empty():
+        e = sub.get_nowait()
+        if e is None:
+            break
+        if e.type == "result":
+            result_events.append(e)
+    assert len(result_events) == 1
+    assert result_events[0].payload["result_id"] == results[0]["id"]
+    assert result_events[0].payload["result_id"] != 0
 
 
 @pytest.mark.asyncio

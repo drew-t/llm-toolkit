@@ -15,6 +15,7 @@ Lifecycle:
 from __future__ import annotations
 
 import asyncio
+import json
 import signal
 import sqlite3
 import time
@@ -24,7 +25,7 @@ from typing import IO, Any
 
 from llm_toolkit.jobs.broadcaster import Broadcaster
 from llm_toolkit.jobs.events import JobEvent
-from llm_toolkit.results import JsonlResultStore, SqliteResultStore
+from llm_toolkit.results import JsonlResultStore
 
 CANCEL_GRACE_S = 5.0
 
@@ -166,25 +167,39 @@ def _finalise(
 def _import_results(db: Path, spec: RunSpec) -> list[dict[str, Any]]:
     if not spec.results_path.exists():
         return []
-    sink = SqliteResultStore(db)
     src = JsonlResultStore(spec.results_path)
     inserted: list[dict[str, Any]] = []
-    for r in src.query():
-        meta = dict(r.metadata or {})
-        meta["host"] = spec.host
-        meta["runner"] = spec.runner
-        meta["gpu"] = spec.gpu
-        meta["run_id"] = spec.run_id
-        r.metadata = meta
-        sink.append(r)
-        with sqlite3.connect(db) as conn:
-            rid = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
-        inserted.append(
-            {
-                "id": rid,
-                "benchmark": r.benchmark,
-                "model": r.model,
-                "metrics": r.metrics,
-            }
-        )
+    with sqlite3.connect(db) as conn:
+        for r in src.query():
+            meta = dict(r.metadata or {})
+            meta["host"] = spec.host
+            meta["runner"] = spec.runner
+            meta["gpu"] = spec.gpu
+            meta["run_id"] = spec.run_id
+            cur = conn.execute(
+                "INSERT INTO results "
+                "(benchmark, model, host, runner, gpu, run_id, timestamp, "
+                " metrics, metadata) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (
+                    r.benchmark,
+                    r.model,
+                    spec.host,
+                    spec.runner,
+                    spec.gpu,
+                    spec.run_id,
+                    r.timestamp,
+                    json.dumps(r.metrics),
+                    json.dumps(meta),
+                ),
+            )
+            inserted.append(
+                {
+                    "id": cur.lastrowid,
+                    "benchmark": r.benchmark,
+                    "model": r.model,
+                    "metrics": r.metrics,
+                }
+            )
+        conn.commit()
     return inserted
