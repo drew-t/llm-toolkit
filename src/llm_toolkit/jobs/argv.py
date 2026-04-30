@@ -37,11 +37,16 @@ def _perf_argv(
     benchmark: str,
 ) -> list[str]:
     argv: list[str] = [
-        "llm-toolkit", "bench-perf",
-        "--url", base_url,
-        "--models", model,
-        "--results", results_path,
-        "--benchmark-name", benchmark,
+        "llm-toolkit",
+        "bench-perf",
+        "--url",
+        base_url,
+        "--models",
+        model,
+        "--results",
+        results_path,
+        "--benchmark-name",
+        benchmark,
     ]
     for key in ("pp", "tg", "depth", "concurrency"):
         v = args.get(key)
@@ -66,15 +71,23 @@ def _perf_argv(
 
 
 def _accuracy_argv(
-    benchmark: str, model: str, base_url: str,
-    results_path: str, args: dict[str, Any],
+    benchmark: str,
+    model: str,
+    base_url: str,
+    results_path: str,
+    args: dict[str, Any],
 ) -> list[str]:
     argv = [
-        "llm-toolkit", "bench",
-        "--suite", benchmark,
-        "--models", model,
-        "--url", base_url,
-        "--results", results_path,
+        "llm-toolkit",
+        "bench",
+        "--suite",
+        benchmark,
+        "--models",
+        model,
+        "--url",
+        base_url,
+        "--results",
+        results_path,
     ]
     if args.get("provider"):
         argv += ["--provider", args["provider"]]

@@ -25,8 +25,7 @@ def test_perf_argv_with_suite_args():
         model="qwen3:8b",
         base_url="http://127.0.0.1:11434/v1",
         results_path="/tmp/r.jsonl",
-        args={"pp": [2048, 4096], "tg": [256], "concurrency": [1, 4],
-              "tokenizer": "Qwen/Qwen3-8B"},
+        args={"pp": [2048, 4096], "tg": [256], "concurrency": [1, 4], "tokenizer": "Qwen/Qwen3-8B"},
     )
     assert "--pp" in argv
     pp_idx = argv.index("--pp")
@@ -51,6 +50,6 @@ def test_accuracy_suite_argv():
 
 def test_unknown_benchmark_raises():
     import pytest
+
     with pytest.raises(ValueError, match="unknown benchmark"):
-        build_argv(benchmark="not_a_suite", model="m",
-                   base_url="x", results_path="y", args={})
+        build_argv(benchmark="not_a_suite", model="m", base_url="x", results_path="y", args={})

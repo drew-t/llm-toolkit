@@ -26,9 +26,12 @@ def test_finished_event_to_json():
 
 
 def test_result_event_to_json():
-    e = JobEvent.result(result_id=42, benchmark="throughput_benchy",
-                        model="qwen3:8b",
-                        metrics={"tg_throughput": 73.4})
+    e = JobEvent.result(
+        result_id=42,
+        benchmark="throughput_benchy",
+        model="qwen3:8b",
+        metrics={"tg_throughput": 73.4},
+    )
     payload = json.loads(e.to_json())
     assert payload["type"] == "result"
     assert payload["result_id"] == 42
