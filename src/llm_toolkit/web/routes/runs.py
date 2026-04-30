@@ -2,15 +2,17 @@
 
 from __future__ import annotations
 
+import contextlib
 import json
 import sqlite3
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi import APIRouter, HTTPException, Query, Request, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel, Field
 
 from llm_toolkit.jobs.argv import build_argv
+from llm_toolkit.jobs.events import JobEvent
 from llm_toolkit.jobs.worker import RunSpec
 
 router = APIRouter(prefix="/api/runs")
@@ -159,3 +161,52 @@ def cancel_run(rid: int, request: Request) -> dict:
             )
             conn.commit()
     return {"id": rid, "cancelled": True}
+
+
+def _terminal_event(row: sqlite3.Row) -> JobEvent:
+    return JobEvent.finished(
+        row["status"],
+        exit_code=row["exit_code"],
+        results_imported=0,
+    )
+
+
+async def runs_websocket_endpoint(websocket: WebSocket, rid: int) -> None:
+    """Public entry — registered as `/ws/runs/{rid}` from app.py."""
+    ctx = websocket.app.state.ctx
+    await websocket.accept()
+    with sqlite3.connect(ctx.db_path) as conn:
+        conn.row_factory = sqlite3.Row
+        row = conn.execute("SELECT * FROM runs WHERE id = ?", (rid,)).fetchone()
+    if row is None:
+        await websocket.send_text(JobEvent.log(f"[error] run {rid} not found").to_json())
+        await websocket.close()
+        return
+
+    log_path = Path(row["log_path"]) if row["log_path"] else None
+    if log_path and log_path.exists():
+        try:
+            for line in log_path.read_text().splitlines():
+                await websocket.send_text(JobEvent.log(line).to_json())
+        except FileNotFoundError:
+            pass
+
+    bc = ctx.queue.broadcaster_for(rid)
+    if bc is None:
+        await websocket.send_text(_terminal_event(row).to_json())
+        await websocket.close()
+        return
+
+    sub = bc.subscribe()
+    try:
+        while True:
+            event = await sub.get()
+            if event is None:
+                break
+            await websocket.send_text(event.to_json())
+    except WebSocketDisconnect:
+        pass
+    finally:
+        bc.unsubscribe(sub)
+        with contextlib.suppress(Exception):
+            await websocket.close()

@@ -52,6 +52,9 @@ def create_app(
     from llm_toolkit.web.routes import runs as runs_routes
 
     app.include_router(runs_routes.router)
+    from llm_toolkit.web.routes.runs import runs_websocket_endpoint
+
+    app.add_api_websocket_route("/ws/runs/{rid}", runs_websocket_endpoint)
 
     from llm_toolkit.web.routes import models as models_routes
 
