@@ -29,7 +29,9 @@ def _seed(db_path: Path) -> int:
 def _client(tmp_path: Path) -> tuple[TestClient, int]:
     db = tmp_path / "r.db"
     rid = _seed(db)
-    app = create_app(db_path=db, hosts_path=tmp_path / "hosts.toml")
+    app = create_app(
+        db_path=db, hosts_path=tmp_path / "hosts.toml", runs_dir=tmp_path / "runs"
+    )
     return TestClient(app), rid
 
 

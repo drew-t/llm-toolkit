@@ -29,7 +29,9 @@ gpu  = "m3-max"
 def _client(tmp_path: Path) -> TestClient:
     hosts = tmp_path / "hosts.toml"
     hosts.write_text(TOML)
-    app = create_app(db_path=tmp_path / "r.db", hosts_path=hosts)
+    app = create_app(
+        db_path=tmp_path / "r.db", hosts_path=hosts, runs_dir=tmp_path / "runs"
+    )
 
     def fake_probe_factory(host_name, gpu):
         async def _probe(base_url, gpu_arg):

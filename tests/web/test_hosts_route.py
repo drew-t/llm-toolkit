@@ -24,7 +24,7 @@ def _make_app(tmp_path: Path) -> tuple[TestClient, Path]:
     hosts = tmp_path / "hosts.toml"
     hosts.write_text(TOML)
     db = tmp_path / "r.db"
-    app = create_app(db_path=db, hosts_path=hosts)
+    app = create_app(db_path=db, hosts_path=hosts, runs_dir=tmp_path / "runs")
     return TestClient(app), db
 
 

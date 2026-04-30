@@ -35,7 +35,13 @@ def _seed(db_path: Path) -> None:
 def _client(tmp_path: Path) -> TestClient:
     db = tmp_path / "r.db"
     _seed(db)
-    return TestClient(create_app(db_path=db, hosts_path=tmp_path / "hosts.toml"))
+    return TestClient(
+        create_app(
+            db_path=db,
+            hosts_path=tmp_path / "hosts.toml",
+            runs_dir=tmp_path / "runs",
+        )
+    )
 
 
 def test_list_default_sort_desc(tmp_path: Path):

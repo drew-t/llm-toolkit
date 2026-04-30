@@ -10,7 +10,11 @@ from llm_toolkit.web.app import create_app
 
 
 def test_healthz(tmp_path: Path):
-    app = create_app(db_path=tmp_path / "r.db", hosts_path=tmp_path / "hosts.toml")
+    app = create_app(
+        db_path=tmp_path / "r.db",
+        hosts_path=tmp_path / "hosts.toml",
+        runs_dir=tmp_path / "runs",
+    )
     client = TestClient(app)
     r = client.get("/healthz")
     assert r.status_code == 200
@@ -19,7 +23,11 @@ def test_healthz(tmp_path: Path):
 
 def test_app_creates_db_on_first_request(tmp_path: Path):
     db = tmp_path / "r.db"
-    app = create_app(db_path=db, hosts_path=tmp_path / "hosts.toml")
+    app = create_app(
+        db_path=db,
+        hosts_path=tmp_path / "hosts.toml",
+        runs_dir=tmp_path / "runs",
+    )
     client = TestClient(app)
     client.get("/healthz")
     assert db.exists()
@@ -43,7 +51,7 @@ def test_serves_spa_index_when_dist_present(tmp_path, monkeypatch):
     hosts_path = tmp_path / "hosts.toml"
     hosts_path.write_text("")
 
-    app = app_module.create_app(db_path=db_path, hosts_path=hosts_path)
+    app = app_module.create_app(db_path=db_path, hosts_path=hosts_path, runs_dir=tmp_path / "runs")
     client = TestClient(app)
 
     r = client.get("/")
@@ -70,7 +78,7 @@ def test_spa_fallback_for_unknown_route(tmp_path, monkeypatch):
     hosts_path = tmp_path / "hosts.toml"
     hosts_path.write_text("")
 
-    app = app_module.create_app(db_path=db_path, hosts_path=hosts_path)
+    app = app_module.create_app(db_path=db_path, hosts_path=hosts_path, runs_dir=tmp_path / "runs")
     client = TestClient(app)
 
     r = client.get("/results")
@@ -93,7 +101,7 @@ def test_api_routes_take_priority_over_spa(tmp_path, monkeypatch):
     hosts_path = tmp_path / "hosts.toml"
     hosts_path.write_text("")
 
-    app = app_module.create_app(db_path=db_path, hosts_path=hosts_path)
+    app = app_module.create_app(db_path=db_path, hosts_path=hosts_path, runs_dir=tmp_path / "runs")
     client = TestClient(app)
 
     r = client.get("/healthz")
@@ -113,8 +121,19 @@ def test_works_without_dist_dir(tmp_path, monkeypatch):
     hosts_path = tmp_path / "hosts.toml"
     hosts_path.write_text("")
 
-    app = app_module.create_app(db_path=db_path, hosts_path=hosts_path)
+    app = app_module.create_app(db_path=db_path, hosts_path=hosts_path, runs_dir=tmp_path / "runs")
     client = TestClient(app)
 
     assert client.get("/healthz").status_code == 200
     assert client.get("/").status_code == 404
+
+
+def test_app_context_has_queue_and_runs_dir(tmp_path):
+    app = create_app(
+        db_path=tmp_path / "r.db",
+        hosts_path=tmp_path / "h.toml",
+        runs_dir=tmp_path / "runs",
+    )
+    ctx = app.state.ctx
+    assert ctx.queue is not None
+    assert ctx.runs_dir.exists()

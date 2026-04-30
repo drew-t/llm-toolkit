@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -11,11 +12,10 @@ from fastapi.staticfiles import StaticFiles
 import llm_toolkit
 from llm_toolkit.db import DEFAULT_DB_PATH, init_db
 from llm_toolkit.discovery.hosts import DEFAULT_HOSTS_PATH
-from llm_toolkit.web.deps import make_context
+from llm_toolkit.web.deps import DEFAULT_RUNS_DIR, make_context
 
 
 def _resolve_web_dist() -> Path:
-    """Locate web/dist/ relative to the installed package (repo root in dev)."""
     return Path(llm_toolkit.__file__).resolve().parent.parent.parent / "web" / "dist"
 
 
@@ -23,24 +23,38 @@ def create_app(
     *,
     db_path: Path | str = DEFAULT_DB_PATH,
     hosts_path: Path | str = DEFAULT_HOSTS_PATH,
+    runs_dir: Path | str = DEFAULT_RUNS_DIR,
 ) -> FastAPI:
     db = Path(db_path)
     hosts = Path(hosts_path)
+    runs = Path(runs_dir)
     init_db(db)
 
-    app = FastAPI(title="llm-toolkit")
-    app.state.ctx = make_context(db_path=db, hosts_path=hosts)
+    @asynccontextmanager
+    async def lifespan(app: FastAPI):
+        await app.state.ctx.queue.start()
+        try:
+            yield
+        finally:
+            await app.state.ctx.queue.stop()
+
+    app = FastAPI(title="llm-toolkit", lifespan=lifespan)
+    app.state.ctx = make_context(db_path=db, hosts_path=hosts, runs_dir=runs)
 
     from llm_toolkit.web.routes import hosts as hosts_routes
+
     app.include_router(hosts_routes.router)
 
     from llm_toolkit.web.routes import results as results_routes
+
     app.include_router(results_routes.router)
 
     from llm_toolkit.web.routes import runs as runs_routes
+
     app.include_router(runs_routes.router)
 
     from llm_toolkit.web.routes import models as models_routes
+
     app.include_router(models_routes.router)
 
     @app.get("/healthz")
