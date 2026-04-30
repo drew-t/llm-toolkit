@@ -136,3 +136,26 @@ async def create_run(body: CreateRunBody, request: Request) -> dict:
     )
     await ctx.queue.enqueue(spec)
     return {"id": rid, "status": "pending"}
+
+
+@router.delete("/{rid}")
+def cancel_run(rid: int, request: Request) -> dict:
+    ctx = request.app.state.ctx
+    with sqlite3.connect(ctx.db_path) as conn:
+        row = conn.execute("SELECT status FROM runs WHERE id = ?", (rid,)).fetchone()
+    if row is None:
+        raise HTTPException(404, "run not found")
+    status = row[0]
+    if status not in {"pending", "running"}:
+        raise HTTPException(409, f"cannot cancel a run in status {status!r}")
+    ok = ctx.queue.cancel(rid)
+    if not ok and status == "pending":
+        with sqlite3.connect(ctx.db_path) as conn:
+            conn.execute(
+                "UPDATE runs SET status = 'cancelled', "
+                "finished_at = strftime('%s','now') "
+                "WHERE id = ? AND status = 'pending'",
+                (rid,),
+            )
+            conn.commit()
+    return {"id": rid, "cancelled": True}
