@@ -8,6 +8,7 @@ import {
 } from '@tanstack/react-table'
 import { Fragment } from 'preact'
 import { useState } from 'preact/hooks'
+import { Link } from 'wouter-preact'
 import type { ResultRow } from '../../types'
 import { formatNumber, formatRelativeTime } from '../../utils/format'
 import { primaryMetric, secondaryMetric } from '../../utils/metrics'
@@ -171,6 +172,11 @@ export function ResultsTable({ rows, selected, onToggle }: Props) {
                         <div>
                           <span class="text-text-muted">Run: </span>
                           <span class="font-mono text-text">Run #{r.run_id}</span>
+                          <div class="mt-2 text-sm">
+                            <Link href={`/run?id=${r.run_id}`} class="text-blue-600 hover:underline">
+                              View run #{r.run_id}
+                            </Link>
+                          </div>
                         </div>
                       )}
                       <div>
