@@ -269,13 +269,13 @@ def _run_db_command(args: argparse.Namespace) -> None:
               "[--host H] [--runner R] [--gpu G]")
         return
     from llm_toolkit.db import DEFAULT_DB_PATH
-    from llm_toolkit.results import JsonlResultStore, SqliteResultStore
+    from llm_toolkit.results import SqliteResultStore, read_jsonl
 
     db_path = Path(args.db) if args.db else DEFAULT_DB_PATH
     sink = SqliteResultStore(db_path)
     total = 0
     for src in args.paths:
-        for r in JsonlResultStore(Path(src)).query():
+        for r in read_jsonl(Path(src)):
             meta = dict(r.metadata or {})
             if args.host is not None:
                 meta["host"] = args.host

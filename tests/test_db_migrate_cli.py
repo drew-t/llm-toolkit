@@ -14,7 +14,7 @@ from llm_toolkit.results import BenchResult, JsonlResultStore
 
 
 def _seed_jsonl(path: Path) -> None:
-    store = JsonlResultStore(path)
+    store: JsonlResultStore = JsonlResultStore(path)
     store.append(BenchResult(
         benchmark="throughput_benchy",
         model="qwen3:8b",
