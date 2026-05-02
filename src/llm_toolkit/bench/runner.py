@@ -10,6 +10,7 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 
+from llm_toolkit.bench.scorer import resolve_scorer
 from llm_toolkit.bench.suite import Suite
 from llm_toolkit.providers.base import Provider
 from llm_toolkit.results import BenchResult, ResultStore
@@ -69,7 +70,7 @@ async def run_suite(
             resp = await provider.chat(model, messages, **suite.provider_opts)
             text = strip_thinking(resp.text) if strip_think else resp.text
 
-            scorer = tc.score_fn or suite.default_score_fn
+            scorer = resolve_scorer(tc.score_fn, suite.default_score_fn)
             score = scorer(text, tc.expected) if scorer and tc.expected is not None else None
 
             case_results.append(CaseResult(

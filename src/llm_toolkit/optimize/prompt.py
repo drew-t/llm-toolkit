@@ -8,6 +8,7 @@ import time
 from dataclasses import dataclass, field
 
 from llm_toolkit.bench.runner import run_suite
+from llm_toolkit.bench.scorer import aggregate
 from llm_toolkit.bench.suite import Suite
 from llm_toolkit.providers.base import Provider
 
@@ -115,10 +116,9 @@ async def _mutate(provider: Provider, model: str, prompt: str, mutation_type: st
 
 async def _evaluate(provider: Provider, model: str, suite: Suite) -> float:
     result = await run_suite(provider, model, suite)
-    scored = [cr for cr in result.case_results if cr.score is not None and cr.error is None]
-    if not scored:
-        return 0.0
-    return (sum(cr.score for cr in scored) / len(scored)) * 100
+    scores = [cr.score for cr in result.case_results if cr.error is None]
+    mean = aggregate(scores)
+    return mean * 100 if mean is not None else 0.0
 
 
 async def optimize_prompt(config: OptimizeConfig) -> OptimizeResult:
