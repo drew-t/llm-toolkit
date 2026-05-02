@@ -7,7 +7,7 @@ import re
 import time
 from dataclasses import dataclass, field
 
-from llm_toolkit.bench.runner import run_suite
+from llm_toolkit.bench.measure import WarmStable, measure
 from llm_toolkit.bench.scorer import aggregate
 from llm_toolkit.bench.suite import Suite
 from llm_toolkit.providers.base import Provider
@@ -83,6 +83,7 @@ class OptimizeConfig:
     mutator_model: str | None = None
     iterations: int = 10
     results_path: str | None = None
+    measurement_repetitions: int = 3
 
 
 async def _mutate(provider: Provider, model: str, prompt: str, mutation_type: str) -> str:
@@ -114,8 +115,16 @@ async def _mutate(provider: Provider, model: str, prompt: str, mutation_type: st
     return result.strip()
 
 
-async def _evaluate(provider: Provider, model: str, suite: Suite) -> float:
-    result = await run_suite(provider, model, suite)
+async def _evaluate(
+    provider: Provider, model: str, suite: Suite, *, repetitions: int,
+) -> float:
+    """Evaluate a candidate against the suite under WarmStable measurement.
+
+    Repetitions denoise scoring; warmup eliminates first-call cold-start bias.
+    """
+    result = await measure(
+        provider, model, suite, strategy=WarmStable(repetitions=repetitions),
+    )
     scores = [cr.score for cr in result.case_results if cr.error is None]
     mean = aggregate(scores)
     return mean * 100 if mean is not None else 0.0
@@ -124,7 +133,10 @@ async def _evaluate(provider: Provider, model: str, suite: Suite) -> float:
 async def optimize_prompt(config: OptimizeConfig) -> OptimizeResult:
     mutator_model = config.mutator_model or config.model
 
-    baseline_score = await _evaluate(config.provider, config.model, config.eval_suite)
+    baseline_score = await _evaluate(
+        config.provider, config.model, config.eval_suite,
+        repetitions=config.measurement_repetitions,
+    )
 
     best_prompt = config.prompt_text
     best_score = baseline_score
@@ -158,7 +170,10 @@ async def optimize_prompt(config: OptimizeConfig) -> OptimizeResult:
         )
 
         try:
-            score = await _evaluate(config.provider, config.model, modified_suite)
+            score = await _evaluate(
+                config.provider, config.model, modified_suite,
+                repetitions=config.measurement_repetitions,
+            )
         except Exception as e:
             history.append(
                 MutationRecord(

@@ -1,4 +1,9 @@
-"""Suite runner: execute benchmark suites against providers."""
+"""Suite runner: execute benchmark suites against providers.
+
+`run_suite` is now a thin wrapper around `bench.measure.measure` with the
+`Direct` strategy. The CaseResult/SuiteResult types live in `measure` and
+are re-exported here so existing callers keep working.
+"""
 
 from __future__ import annotations
 
@@ -7,38 +12,30 @@ import asyncio
 import importlib
 import re
 import time
-from dataclasses import dataclass
 from pathlib import Path
 
-from llm_toolkit.bench.scorer import resolve_scorer
+from llm_toolkit.bench.measure import (
+    CaseResult,
+    Direct,
+    SuiteResult,
+    measure,
+)
 from llm_toolkit.bench.suite import Suite
 from llm_toolkit.providers.base import Provider
 from llm_toolkit.results import BenchResult, ResultStore
 
-
-@dataclass
-class CaseResult:
-    """Result of running a single test case."""
-
-    key: str
-    response: str
-    score: float | None
-    wall_time_s: float
-    prompt_tokens: int
-    gen_tokens: int
-    prefill_tok_s: float
-    decode_tok_s: float
-    error: str | None = None
-
-
-@dataclass
-class SuiteResult:
-    """Result of running a complete suite."""
-
-    suite_name: str
-    model: str
-    case_results: list[CaseResult]
-    total_time_s: float = 0.0
+__all__ = [
+    "BUILTIN_SUITES",
+    "CaseResult",
+    "SuiteResult",
+    "async_main",
+    "load_suite_from_path",
+    "main",
+    "print_suite_result",
+    "run_suite",
+    "strip_thinking",
+    "suite_results_to_bench_results",
+]
 
 
 def strip_thinking(text: str) -> str:
@@ -53,42 +50,11 @@ async def run_suite(
     *,
     strip_think: bool = True,
 ) -> SuiteResult:
-    """Run all test cases in a suite against a model."""
-    case_results: list[CaseResult] = []
-    t_start = time.perf_counter()
+    """Run all test cases in a suite against a model.
 
-    for tc in suite.cases:
-        messages: list[dict[str, str]] = []
-        if suite.system_prompt:
-            messages.append({"role": "system", "content": suite.system_prompt})
-        if tc.messages:
-            messages.extend(tc.messages)
-        else:
-            messages.append({"role": "user", "content": tc.prompt})
-
-        try:
-            resp = await provider.chat(model, messages, **suite.provider_opts)
-            text = strip_thinking(resp.text) if strip_think else resp.text
-
-            scorer = resolve_scorer(tc.score_fn, suite.default_score_fn)
-            score = scorer(text, tc.expected) if scorer and tc.expected is not None else None
-
-            case_results.append(CaseResult(
-                key=tc.key, response=text, score=score,
-                wall_time_s=resp.wall_time_s, prompt_tokens=resp.prompt_tokens,
-                gen_tokens=resp.gen_tokens, prefill_tok_s=resp.prefill_tok_s,
-                decode_tok_s=resp.decode_tok_s,
-            ))
-        except Exception as e:
-            case_results.append(CaseResult(
-                key=tc.key, response="", score=0.0,
-                wall_time_s=0.0, prompt_tokens=0, gen_tokens=0,
-                prefill_tok_s=0.0, decode_tok_s=0.0, error=str(e),
-            ))
-
-    total = time.perf_counter() - t_start
-    return SuiteResult(suite_name=suite.name, model=model,
-                       case_results=case_results, total_time_s=round(total, 3))
+    Compatibility wrapper: delegates to `measure` with the `Direct` strategy.
+    """
+    return await measure(provider, model, suite, strategy=Direct(strip_think=strip_think))
 
 
 def print_suite_result(result: SuiteResult) -> None:
