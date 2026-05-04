@@ -5,14 +5,15 @@ from __future__ import annotations
 from collections.abc import Callable
 
 from llm_toolkit.bench.runner import CaseResult
+from llm_toolkit.bench.scorer import exact_match_scorer
 from llm_toolkit.bench.suite import Suite, TestCase
 
-
-def exact_match_scorer(text: str, expected: str) -> float:
-    cleaned = text.strip().lower().split("\n")[0]
-    if "|" in cleaned:
-        cleaned = cleaned.split("|")[0].strip()
-    return 1.0 if cleaned == expected.strip().lower() else 0.0
+__all__ = [
+    "build_classifier_suite",
+    "classifier_suite",
+    "exact_match_scorer",
+    "score_results_by_category",
+]
 
 
 def build_classifier_suite(

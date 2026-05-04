@@ -25,7 +25,7 @@ from typing import IO, Any
 
 from llm_toolkit.jobs.broadcaster import Broadcaster
 from llm_toolkit.jobs.events import JobEvent
-from llm_toolkit.results import JsonlResultStore
+from llm_toolkit.results import read_jsonl
 
 CANCEL_GRACE_S = 5.0
 
@@ -167,10 +167,9 @@ def _finalise(
 def _import_results(db: Path, spec: RunSpec) -> list[dict[str, Any]]:
     if not spec.results_path.exists():
         return []
-    src = JsonlResultStore(spec.results_path)
     inserted: list[dict[str, Any]] = []
     with sqlite3.connect(db) as conn:
-        for r in src.query():
+        for r in read_jsonl(spec.results_path):
             meta = dict(r.metadata or {})
             meta["host"] = spec.host
             meta["runner"] = spec.runner

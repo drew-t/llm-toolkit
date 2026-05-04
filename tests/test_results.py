@@ -1,10 +1,18 @@
-"""Tests for the JSONL result store."""
+"""Tests for the JSONL result store and the read_jsonl helper.
+
+JsonlResultStore is now narrowed to append-only. The migration path uses
+the module-level read_jsonl(path) helper. Querying and summary tables
+live on SqliteResultStore.
+"""
 
 from __future__ import annotations
 
 import time
+from pathlib import Path
 
-from llm_toolkit.results import BenchResult, ResultStore
+import pytest
+
+from llm_toolkit.results import BenchResult, JsonlResultStore, ResultStore, read_jsonl
 
 
 def test_bench_result_creation():
@@ -16,50 +24,53 @@ def test_bench_result_creation():
     assert r.metrics["wall_time_s"] == 1.5
 
 
-def test_result_store_append_and_query(tmp_path):
-    store = ResultStore(tmp_path / "results.jsonl")
-    now = time.time()
-    store.append(BenchResult("suite_a", "model_1", now, {"score": 0.9}, {}))
-    store.append(BenchResult("suite_b", "model_1", now, {"score": 0.8}, {}))
-    store.append(BenchResult("suite_a", "model_2", now, {"score": 0.7}, {}))
-    all_results = store.query()
-    assert len(all_results) == 3
-    suite_a = store.query(benchmark="suite_a")
-    assert len(suite_a) == 2
-    model_1 = store.query(model="model_1")
-    assert len(model_1) == 2
-
-
-def test_result_store_query_since(tmp_path):
-    store = ResultStore(tmp_path / "results.jsonl")
-    old = time.time() - 3600
-    recent = time.time()
-    store.append(BenchResult("s", "m", old, {}, {}))
-    store.append(BenchResult("s", "m", recent, {}, {}))
-    results = store.query(since=recent - 1)
-    assert len(results) == 1
-
-
-def test_result_store_empty(tmp_path):
-    store = ResultStore(tmp_path / "results.jsonl")
-    assert store.query() == []
-
-
-def test_result_store_summary_table(tmp_path):
-    store = ResultStore(tmp_path / "results.jsonl")
-    now = time.time()
-    results = [
-        BenchResult("suite", "model_a", now, {"wall_time_s": 1.0}, {}),
-        BenchResult("suite", "model_b", now, {"wall_time_s": 2.0}, {}),
-    ]
-    table = store.summary_table(results, pivot="model", metric="wall_time_s")
-    assert "model_a" in table
-    assert "model_b" in table
-
-
-def test_result_store_persistence(tmp_path):
+def test_jsonl_store_append_persists(tmp_path: Path):
     path = tmp_path / "results.jsonl"
-    store1 = ResultStore(path)
-    store1.append(BenchResult("s", "m", time.time(), {"x": 1}, {}))
-    store2 = ResultStore(path)
-    assert len(store2.query()) == 1
+    store = JsonlResultStore(path)
+    store.append(BenchResult("s", "m", 1.0, {"x": 1}, {}))
+    store.append(BenchResult("s", "m", 2.0, {"x": 2}, {}))
+    rows = read_jsonl(path)
+    assert [r.metrics["x"] for r in rows] == [1, 2]
+
+
+def test_jsonl_store_no_query_or_summary_table():
+    """Public surface of JsonlResultStore is append() only."""
+    store = JsonlResultStore("/tmp/dummy.jsonl")
+    assert not hasattr(store, "query")
+    assert not hasattr(store, "summary_table")
+
+
+def test_read_jsonl_missing_file_returns_empty(tmp_path: Path):
+    assert read_jsonl(tmp_path / "absent.jsonl") == []
+
+
+def test_read_jsonl_skips_blank_lines(tmp_path: Path):
+    path = tmp_path / "r.jsonl"
+    path.write_text(
+        '{"benchmark": "s", "model": "m", "timestamp": 1.0, "metrics": {}, "metadata": {}}\n'
+        "\n"
+        '{"benchmark": "s", "model": "m", "timestamp": 2.0, "metrics": {}, "metadata": {}}\n'
+    )
+    rows = read_jsonl(path)
+    assert len(rows) == 2
+
+
+def test_factory_jsonl_extension_returns_writer(tmp_path: Path):
+    """ResultStore(path.jsonl) keeps working — TMNT relies on append()."""
+    store = ResultStore(tmp_path / "out.jsonl")
+    store.append(BenchResult("s", "m", time.time(), {}, {}))
+    assert (tmp_path / "out.jsonl").exists()
+
+
+def test_factory_non_jsonl_returns_sqlite(tmp_path: Path):
+    """Anything else routes to SQLite."""
+    from llm_toolkit.results import SqliteResultStore
+    store = ResultStore(tmp_path / "out.db")
+    assert isinstance(store, SqliteResultStore)
+
+
+def test_jsonl_store_query_removed_in_favor_of_read_jsonl(tmp_path: Path):
+    """If anyone was calling .query() on a JSONL store, we want a clear failure."""
+    store = JsonlResultStore(tmp_path / "x.jsonl")
+    with pytest.raises(AttributeError):
+        store.query()  # type: ignore[attr-defined]

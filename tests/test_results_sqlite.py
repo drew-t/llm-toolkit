@@ -73,6 +73,16 @@ def test_sqlite_store_limit(tmp_path: Path):
     assert len(store.query(limit=2)) == 2
 
 
+def test_sqlite_store_summary_table(tmp_path: Path):
+    store = SqliteResultStore(tmp_path / "r.db")
+    store.append(BenchResult("suite", "model_a", 1.0, {"wall_time_s": 1.0}, {}))
+    store.append(BenchResult("suite", "model_b", 2.0, {"wall_time_s": 2.0}, {}))
+    rows = store.query()
+    table = store.summary_table(rows, pivot="model", metric="wall_time_s")
+    assert "model_a" in table
+    assert "model_b" in table
+
+
 def test_factory_returns_jsonl_for_jsonl_path(tmp_path: Path):
     store = ResultStore(tmp_path / "out.jsonl")
     assert isinstance(store, JsonlResultStore)
@@ -81,10 +91,3 @@ def test_factory_returns_jsonl_for_jsonl_path(tmp_path: Path):
 def test_factory_returns_sqlite_for_db_path(tmp_path: Path):
     store = ResultStore(tmp_path / "out.db")
     assert isinstance(store, SqliteResultStore)
-
-
-def test_jsonl_store_still_works(tmp_path: Path):
-    store = JsonlResultStore(tmp_path / "out.jsonl")
-    store.append(_result())
-    rows = store.query()
-    assert rows[0].model == "qwen3:8b"
