@@ -109,6 +109,23 @@ def test_report_to_bench_results_flattens_metrics():
     assert second.metrics["pp_throughput"] == 4321.0
 
 
+def test_report_to_bench_results_surfaces_raw_values():
+    """Raw per-run values from BenchmarkMetric.values are preserved in metadata
+    so downstream consumers can compute min/max/percentiles."""
+    report = _sample_report()
+    # Multi-value metric — simulates a real concurrent-burst run
+    report["benchmarks"][0]["ttfr"] = {
+        "mean": 120.0, "std": 15.0,
+        "values": [100.0, 110.0, 120.0, 130.0, 140.0],
+    }
+    rows = report_to_bench_results(report)
+    values = rows[0].metadata["values"]
+    assert values["ttfr"] == [100.0, 110.0, 120.0, 130.0, 140.0]
+    assert values["tg_throughput"] == [78.9]
+    # Null source metrics should not appear in values map
+    assert "peak_throughput" not in values
+
+
 def test_report_to_bench_results_default_model_from_report():
     rows = report_to_bench_results(_sample_report())
     assert rows[0].model == "qwen3:8b"

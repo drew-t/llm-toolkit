@@ -121,6 +121,14 @@ def _metric_std(metric: Any) -> float | None:
     return None
 
 
+def _metric_values(metric: Any) -> list[float] | None:
+    if isinstance(metric, dict):
+        vs = metric.get("values")
+        if isinstance(vs, list):
+            return [float(v) for v in vs]
+    return None
+
+
 def _row_key(row: dict[str, Any]) -> str:
     parts = [
         f"c{row.get('concurrency', '?')}",
@@ -146,6 +154,7 @@ def report_to_bench_results(
     for row in report.get("benchmarks", []):
         metrics: dict[str, Any] = {}
         stds: dict[str, float] = {}
+        values: dict[str, list[float]] = {}
         for key in HEADLINE_METRIC_KEYS:
             mean = _metric_mean(row.get(key))
             if mean is not None:
@@ -153,6 +162,9 @@ def report_to_bench_results(
             std = _metric_std(row.get(key))
             if std is not None:
                 stds[key] = std
+            raw = _metric_values(row.get(key))
+            if raw is not None:
+                values[key] = raw
         out.append(
             BenchResult(
                 benchmark=benchmark,
@@ -167,6 +179,7 @@ def report_to_bench_results(
                     "context_size": row.get("context_size"),
                     "is_context_prefill_phase": row.get("is_context_prefill_phase"),
                     "std": stds,
+                    "values": values,
                     "version": report.get("version"),
                     "latency_mode": report.get("latency_mode"),
                     "latency_ms": report.get("latency_ms"),
